@@ -1,0 +1,12 @@
+name: AirMarbles
+version: '${project.version}'
+main: me.roxo.airmarbles.AirMarbles
+api-version: 1.18
+authors: [ Roxo ]
+description:
+  Elements Of The Avatar Addons: As Demonstrated by Aang, you Manipulate the Air to form multi Marbles to blow at the Entities giving them a ride.
+depend: [ProjectKorra]
+airmarbles.player:
+  default: true
+  children:
+    bending.ability.AirMarbles: true
