@@ -35,9 +35,12 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
     private int a;
     private int b;
 
-    private Slime slime;
+    //private Slime slime;
+
+    private ArrayList<Slime> slimes;
     private boolean isSlimeTime;
     private int count;
+    private ArrayList<LivingEntity> entities1 ;
 
     public AirMarbles(Player player) {
         super(player);
@@ -48,6 +51,8 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
         count = 0;
         isSlimeTime = false;
         state = States.PRESTART;
+        entities1 = new ArrayList<>();
+        slimes = new ArrayList<>();
         start();
     }
 
@@ -58,6 +63,7 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
         MARBLES = ConfigManager.getConfig().getInt("AirMarbles.MARBLES");
         TIMING = ConfigManager.getConfig().getInt("AirMarbles.TIMING");
     }
+
     @Override
     public void progress() {
         if (this.player.isDead() || !this.player.isOnline()) {
@@ -66,34 +72,36 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
         }
         if (!CoreAbility.hasAbility(player, this.getClass())) {return;}
         if (bPlayer.isOnCooldown(this)){ remove(); return;}
-        if(slime != null) {
-            if (!this.slime.getPassengers().contains(this.player) && isSlimeTime) {
-                player.setSprinting(true);
-                player.setSneaking(true);
-                slime.damage(20);
-                bPlayer.addCooldown(this);
-                remove();
+        for(int i = 0; i < MARBLES; i++) {
+            if (slimes != null) {
+                if (entities1.get(i) == null) {
+                    continue;
+                }
+                if (!slimes.get(i).getPassengers().contains(entities1.get(i)) && isSlimeTime) {
+                    player.setSprinting(true);
+                    player.setSneaking(true);
+                    slimes.get(i).damage(20);
+                    bPlayer.addCooldown(this);
+                    remove();
+                }
             }
         }
         switch (state) {
 
             case PRESTART:
                 Bukkit.getServer().broadcastMessage("prestart");
-
+                livingEntities();
                 Location handLocation = GeneralMethods.getMainHandLocation(player);
                 Objects.requireNonNull(handLocation.getWorld()).spawnParticle(Particle.REDSTONE, handLocation, MARBLES, new Particle.DustOptions(Color.fromBGR(255, 255, 255), 1));
                 state = States.START;
                 break;
             case START:
-
-                    Bukkit.getServer().broadcastMessage("Start");
-
+                Bukkit.getServer().broadcastMessage("Start");
                 Location handLocation3 = GeneralMethods.getMainHandLocation(player);
 
                     BukkitRunnable br = new BukkitRunnable() {
                         @Override
                         public void run() {
-
                             a--;
                             b++;
                             if ( b >= 20) {
@@ -105,8 +113,12 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
 //                                Objects.requireNonNull(handLocation.getWorld()).spawnParticle(Particle.REDSTONE, handLocation, MARBLES, new Particle.DustOptions(Color.fromBGR(255, 255, 255), 1));
 //
 //                            } else {
+                            for(int m = 0; m < MARBLES; m++) {
+                                if(entities1.get(m) == null){
+                                    continue;
+                                }
                                     float a1 = (float) b / 20;
-                                   Location location1 = bezierPoint(a1,handLocation3, handLocation3.add(0,0,0), livingEntities().get(0).getLocation());
+                                   Location location1 = bezierPoint(a1,handLocation3, handLocation3.add(0,0,0), entities1.get(m).getLocation());
                                     for (double i = 0; i <= Math.PI; i += Math.PI / 10) {
                                         double radius = Math.sin(i) / a;
                                         double y = Math.cos(i) / a;
@@ -118,9 +130,7 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
                                             location1.subtract(x, y, z);
                                         }
                                     }
-                            //}
-
-
+                            }
                             //TODO WHen done kill the slime in all places.
                         }
                     };
@@ -129,50 +139,49 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
                 state = States.NULL;
                 break;
             case MIDDLE:
-
-
-                if(count == 0) {
-
-                    this.flightHandler.createInstance(player, this.getName());
-                    player.setAllowFlight(true);
-                    player.setFlying(true);
-
-                    player.setSprinting(false);
-                    player.setSneaking(false);
-                    this.slime = (Slime) player.getWorld().spawnEntity(player.getLocation(), EntityType.SLIME);
-                    if (this.slime != null) {
-                        this.slime.setSize(1);
-                        this.slime.setSilent(true);
-                        this.slime.setInvulnerable(true);
-                        this.slime.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 1, true, false));
-                        this.slime.addPassenger(player);
+                if (count == 0) {
+                    for(int i = 0; i < MARBLES; i++) {
+                    if(entities1.get(i) == null){
+                        continue;
                     }
+                    Slime slime = (Slime) entities1.get(i).getWorld().spawnEntity(entities1.get(i).getLocation(), EntityType.SLIME);
+                    slimes.add(slime);
+                    slimes.get(i).setSize(2);
+                    slimes.get(i).setSilent(true);
+                    slimes.get(i).setInvulnerable(true);
+                    slimes.get(i).addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 1, true, false));
+                    slimes.get(i).addPassenger(entities1.get(0));
+                    slimes.get(i).addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, Integer.MAX_VALUE, 1, true, false));
                 }
-
-
-                Vector velocity = this.player.getEyeLocation().getDirection().clone().normalize();
-                if(count % 2 == 0){
-                    velocity.setY(-.25);
-                    if(getFloor()){
-                        bPlayer.addCooldown(this);
-                        remove();
-                        return;
+            }
+                for(int m = 0; m < MARBLES; m++) {
+                    if (entities1.get(m) == null) {
+                        continue;
                     }
-                    Location location1 = player.getLocation();
-                    for (double i = 0; i <= Math.PI; i += Math.PI / 10) {
-                        double radius = Math.sin(i) ;
-                        double y = Math.cos(i) ;
-                        for (double j = 0; j < Math.PI * 2; j += Math.PI / 10) {
-                            double x = Math.cos(j) * radius;
-                            double z = Math.sin(j) * radius;
-                            location1.add(x, y, z);
-                            getAirbendingParticles().display(location1, 1);
-                            location1.subtract(x, y, z);
+                    Vector velocity = this.player.getEyeLocation().getDirection().clone().normalize();
+                    if (count % 2 == 0) {
+                        velocity.setY(-.25);
+                        if (getFloor(entities1.get(m))) {
+                            bPlayer.addCooldown(this);
+                            remove();
+                            return;
+                        }
+                        Location location1 = entities1.get(m).getLocation();
+                        for (double i = 0; i <= Math.PI; i += Math.PI / 10) {
+                            double radius = Math.sin(i);
+                            double y = Math.cos(i);
+                            for (double j = 0; j < Math.PI * 2; j += Math.PI / 10) {
+                                double x = Math.cos(j) * radius;
+                                double z = Math.sin(j) * radius;
+                                location1.add(x, y, z);
+                                getAirbendingParticles().display(location1, 1);
+                                location1.subtract(x, y, z);
+                            }
                         }
                     }
+                    velocity = velocity.clone().normalize().multiply(.2);
+                    GeneralMethods.setVelocity(this, slimes.get(m), velocity);
                 }
-                velocity = velocity.clone().normalize().multiply(.5);
-                GeneralMethods.setVelocity(this, this.slime, velocity);
                     count++;
                 isSlimeTime = true;
                 break;
@@ -185,34 +194,38 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
                 }
         }
 
-    private boolean getFloor() {
-        boolean b1 = false;
-        if(player.getLocation().add(0,-5,0).getBlock().getType() == Material.AIR){
-            b1 = true;
-            return b1;
-        }
-
-        return b1;
+    private boolean getFloor(Entity entity) {
+        return entity.getLocation().add(0, -5, 0).getBlock().getType() == Material.AIR;
     }
 
     public Location bezierPoint(float t, Location p0, Location p1, Location p2){
-        // pFinal[0] = Math.pow(1 - t, 2) * p0[0] + (1-t) * 2 * t * p1[0] + t * t * p2[0];
-        // pFinal[1] = Math.pow(1 - t, 2) * p0[1] + (1-t) * 2 * t * p1[1] + t * t * p2[1];
+        /*
+        *pFinal[0] = Math.pow(1 - t, 2) * p0[0] + (1-t) * 2 * t * p1[0] + t * t * p2[0];
+        *pFinal[1] = Math.pow(1 - t, 2) * p0[1] + (1-t) * 2 * t * p1[1] + t * t * p2[1];
+         */
         return p0.clone().multiply((1-t)*(1-t)).add(p1.clone().multiply((1-t) * 2 * t)).add(p2.clone().multiply(t*t));
     }
 
-    public ArrayList<LivingEntity> livingEntities(){
-        List<Entity> entities = GeneralMethods.getEntitiesAroundPoint(player.getLocation(), 20);
-        ArrayList<LivingEntity> entities1 = new ArrayList<>();
-        for (Entity target : entities) {
-            if (target.getUniqueId() == player.getUniqueId()) {
-                continue;
-            }
-            if (target instanceof LivingEntity) {
-                entities1.add((LivingEntity) target);
+    public void  livingEntities(){
+        for(int i = 0; i < MARBLES; i++) {
+            List<Entity> entities = GeneralMethods.getEntitiesAroundPoint(player.getLocation(), 20);
+            entities1 = new ArrayList<>();
+            for (Entity target : entities) {
+                if (target.getUniqueId() == player.getUniqueId()) {
+                    continue;
+                }
+                if(target.getType() == EntityType.SLIME){
+                    continue;
+                }else{
+                    if(target == entities1.get(i-1) || target.getType() == EntityType.SLIME){
+                        continue;
+                    }
+                }
+                if (target instanceof LivingEntity) {
+                    entities1.add((LivingEntity) target);
+                }
             }
         }
-        return entities1;
     }
 
 
@@ -239,8 +252,10 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
     @Override
     public String getDescription(){
         return "Elements Of The Avatar Addons:\n" +
-                "As Demonstrated by Aang, you Manipulate the Air to form multi Marbles to blow at the Entities giving them a ride. ";
+                "As Demonstrated by Aang, you Manipulate the Air to form multi Marbles to blow at the Entities giving them a ride. \n" +
+                "AirSuction (Left Click) > AirScooter (Tap Shift) > AirBreath (Hold Shift)";
     }
+
     @Override
     public Location getLocation() {
         return location;
@@ -254,7 +269,7 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
         ProjectKorra.plugin.getServer().getPluginManager().registerEvents(listener, ProjectKorra.plugin);
         final FileConfiguration config = ConfigManager.defaultConfig.get();
         config.addDefault("AirMarbles.RANGE", 40);
-        config.addDefault("AirMarbles.COOLDOWN", 20000);
+        config.addDefault("AirMarbles.COOLDOWN", 1000);
         config.addDefault("AirMarbles.SPEED",  .5);
         config.addDefault("AirMarbles.MARBLES",  6);
         config.addDefault("AirMarbles.TIMING",  20);
