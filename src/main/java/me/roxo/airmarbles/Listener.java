@@ -15,11 +15,9 @@ public class Listener implements org.bukkit.event.Listener {
     public void onSneak(final PlayerToggleSneakEvent event){
         final Player player = event.getPlayer();
         final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
-        if (event.isCancelled() || bPlayer == null) {
-            return;
-        }
-        if (bPlayer.getBoundAbilityName().equalsIgnoreCase("AirMarbles")) {
-            Bukkit.getServer().broadcastMessage("SNeak");
+
+        if (bPlayer.canBend(CoreAbility.getAbility((Class)AirMarbles.class))) {
+            Bukkit.getServer().broadcastMessage("click");
             new AirMarbles(player);
         }
     }

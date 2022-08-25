@@ -21,10 +21,7 @@ import java.util.List;
 import java.util.Objects;
 
 public final class AirMarbles extends AirAbility implements AddonAbility,ComboAbility {
-
-    private static int TIMING ;
     private static  int MARBLES ;
-    private static double RANGE ;
     private static long COOLDOWN ;
     private static double SPEED;
     private Permission perm;
@@ -35,12 +32,12 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
     private int a;
     private int b;
 
-    //private Slime slime;
-
     private ArrayList<Slime> slimes;
     private boolean isSlimeTime;
     private int count;
     private ArrayList<LivingEntity> entities1 ;
+    private int time;
+    private static int TIME_OF_SCOOCTERS;
 
     public AirMarbles(Player player) {
         super(player);
@@ -53,15 +50,18 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
         state = States.PRESTART;
         entities1 = new ArrayList<>();
         slimes = new ArrayList<>();
+        time = 0;
+        if (player.getWorld().getDifficulty() == Difficulty.PEACEFUL) {
+            this.isSlimeTime = true;
+        }
         start();
     }
 
       private void setFields() {
-        RANGE = ConfigManager.getConfig().getDouble("AirMarbles.RANGE");
         COOLDOWN = ConfigManager.getConfig().getLong("AirMarbles.COOLDOWN");
         SPEED = ConfigManager.getConfig().getDouble("AirMarbles.SPEED");
         MARBLES = ConfigManager.getConfig().getInt("AirMarbles.MARBLES");
-        TIMING = ConfigManager.getConfig().getInt("AirMarbles.TIMING");
+        TIME_OF_SCOOCTERS = ConfigManager.getConfig().getInt("AirMarbles.TIME_OF_SCOOCTERS");
     }
 
     @Override
@@ -72,31 +72,15 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
         }
         if (!CoreAbility.hasAbility(player, this.getClass())) {return;}
         if (bPlayer.isOnCooldown(this)){ remove(); return;}
-        for(int i = 0; i < MARBLES; i++) {
-            if (slimes != null) {
-                if (entities1.get(i) == null) {
-                    continue;
-                }
-                if (!slimes.get(i).getPassengers().contains(entities1.get(i)) && isSlimeTime) {
-                    player.setSprinting(true);
-                    player.setSneaking(true);
-                    slimes.get(i).damage(20);
-                    bPlayer.addCooldown(this);
-                    remove();
-                }
-            }
-        }
         switch (state) {
 
             case PRESTART:
-                Bukkit.getServer().broadcastMessage("prestart");
                 livingEntities();
                 Location handLocation = GeneralMethods.getMainHandLocation(player);
                 Objects.requireNonNull(handLocation.getWorld()).spawnParticle(Particle.REDSTONE, handLocation, MARBLES, new Particle.DustOptions(Color.fromBGR(255, 255, 255), 1));
                 state = States.START;
                 break;
             case START:
-                Bukkit.getServer().broadcastMessage("Start");
                 Location handLocation3 = GeneralMethods.getMainHandLocation(player);
 
                     BukkitRunnable br = new BukkitRunnable() {
@@ -108,13 +92,8 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
                                 state = States.MIDDLE;
                                 cancel();
                             }
-//                            if (a >= 17) {
-//                                Location handLocation = GeneralMethods.getMainHandLocation(player);
-//                                Objects.requireNonNull(handLocation.getWorld()).spawnParticle(Particle.REDSTONE, handLocation, MARBLES, new Particle.DustOptions(Color.fromBGR(255, 255, 255), 1));
-//
-//                            } else {
                             for(int m = 0; m < MARBLES; m++) {
-                                if(entities1.get(m) == null){
+                                if(entities1 == null || m >= entities1.size()){
                                     continue;
                                 }
                                     float a1 = (float) b / 20;
@@ -131,7 +110,6 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
                                         }
                                     }
                             }
-                            //TODO WHen done kill the slime in all places.
                         }
                     };
                     br.runTaskTimer(ProjectKorra.plugin, 0, 2);
@@ -139,37 +117,22 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
                 state = States.NULL;
                 break;
             case MIDDLE:
-                if (count == 0) {
-                    for(int i = 0; i < MARBLES; i++) {
-                    if(entities1.get(i) == null){
-                        continue;
-                    }
-                    Slime slime = (Slime) entities1.get(i).getWorld().spawnEntity(entities1.get(i).getLocation(), EntityType.SLIME);
-                    slimes.add(slime);
-                    slimes.get(i).setSize(2);
-                    slimes.get(i).setSilent(true);
-                    slimes.get(i).setInvulnerable(true);
-                    slimes.get(i).addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 1, true, false));
-                    slimes.get(i).addPassenger(entities1.get(0));
-                    slimes.get(i).addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, Integer.MAX_VALUE, 1, true, false));
-                }
-            }
                 for(int m = 0; m < MARBLES; m++) {
-                    if (entities1.get(m) == null) {
+                    if(entities1 == null || m >= entities1.size()){
                         continue;
                     }
-                    Vector velocity = this.player.getEyeLocation().getDirection().clone().normalize();
+                    Vector velocity = entities1.get(m).getEyeLocation().getDirection().clone().normalize();
                     if (count % 2 == 0) {
                         velocity.setY(-.25);
                         if (getFloor(entities1.get(m))) {
-                            bPlayer.addCooldown(this);
-                            remove();
-                            return;
+
+                           state = States.END;
+                           return;
                         }
                         Location location1 = entities1.get(m).getLocation();
                         for (double i = 0; i <= Math.PI; i += Math.PI / 10) {
                             double radius = Math.sin(i);
-                            double y = Math.cos(i);
+                            double y = Math.cos(i) - 1;
                             for (double j = 0; j < Math.PI * 2; j += Math.PI / 10) {
                                 double x = Math.cos(j) * radius;
                                 double z = Math.sin(j) * radius;
@@ -179,16 +142,35 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
                             }
                         }
                     }
-                    velocity = velocity.clone().normalize().multiply(.2);
-                    GeneralMethods.setVelocity(this, slimes.get(m), velocity);
+                    velocity = velocity.clone().normalize().multiply(SPEED);
+                    if(entities1.get(m).getLocation().clone().add(0,-1.5,0).getBlock().getType() != Material.AIR){
+                       velocity.setY(.25);
+                    }
+                    GeneralMethods.setVelocity(this, entities1.get(m), velocity);
                 }
-                    count++;
+
                 isSlimeTime = true;
+                if(count == 0) {
+                    BukkitRunnable br2 = new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            if (time >= TIME_OF_SCOOCTERS) {
+                                state = States.END;
+                                cancel();
+                            }
+
+                            time++;
+
+                        }
+                    };
+                    br2.runTaskTimer(ProjectKorra.plugin, 20, 20);
+                }
+                count++;
                 break;
             case END:
-
-
-
+                    bPlayer.addCooldown(this);
+                    remove();
+                state = States.NULL;
                 break;
 
                 }
@@ -206,26 +188,33 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
         return p0.clone().multiply((1-t)*(1-t)).add(p1.clone().multiply((1-t) * 2 * t)).add(p2.clone().multiply(t*t));
     }
 
-    public void  livingEntities(){
-        for(int i = 0; i < MARBLES; i++) {
+    public void  livingEntities() {
+        for (int i = 0; i < MARBLES; i++) {
             List<Entity> entities = GeneralMethods.getEntitiesAroundPoint(player.getLocation(), 20);
             entities1 = new ArrayList<>();
             for (Entity target : entities) {
                 if (target.getUniqueId() == player.getUniqueId()) {
                     continue;
                 }
-                if(target.getType() == EntityType.SLIME){
+                if (target.getType() == EntityType.SLIME) {
                     continue;
-                }else{
-                    if(target == entities1.get(i-1) || target.getType() == EntityType.SLIME){
-                        continue;
-                    }
                 }
+
+
                 if (target instanceof LivingEntity) {
                     entities1.add((LivingEntity) target);
                 }
             }
         }
+        for (int i = 0; i < entities1.size(); i++) {
+            for (int j = i + 1; j < entities1.size(); j++) {
+                if (entities1.get(i).getUniqueId().equals(entities1.get(j).getUniqueId())) {
+                    entities1.remove(entities1.get(i));
+
+                }
+            }
+        }
+
     }
 
 
@@ -241,7 +230,7 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
 
     @Override
     public long getCooldown() {
-        return 1000;
+        return COOLDOWN;
     }
 
     @Override
@@ -253,7 +242,7 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
     public String getDescription(){
         return "Elements Of The Avatar Addons:\n" +
                 "As Demonstrated by Aang, you Manipulate the Air to form multi Marbles to blow at the Entities giving them a ride. \n" +
-                "AirSuction (Left Click) > AirScooter (Tap Shift) > AirBreath (Hold Shift)";
+                "AirSuction (Left Click) > AirScooter (Left Click) > AirBreath (Hold Shift)";
     }
 
     @Override
@@ -268,11 +257,10 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
         listener = new Listener();
         ProjectKorra.plugin.getServer().getPluginManager().registerEvents(listener, ProjectKorra.plugin);
         final FileConfiguration config = ConfigManager.defaultConfig.get();
-        config.addDefault("AirMarbles.RANGE", 40);
-        config.addDefault("AirMarbles.COOLDOWN", 1000);
-        config.addDefault("AirMarbles.SPEED",  .5);
+        config.addDefault("AirMarbles.COOLDOWN", 20000);
+        config.addDefault("AirMarbles.SPEED",  .2);
         config.addDefault("AirMarbles.MARBLES",  6);
-        config.addDefault("AirMarbles.TIMING",  20);
+        config.addDefault("AirMarbles.TIME_OF_SCOOCTERS", 10);
         ConfigManager.defaultConfig.save();
     }
 
@@ -302,7 +290,7 @@ public final class AirMarbles extends AirAbility implements AddonAbility,ComboAb
         final ArrayList<ComboManager.AbilityInformation> airwake = new ArrayList<>();
         airwake.add(new ComboManager.AbilityInformation("AirSuction", ClickType.LEFT_CLICK));
         airwake.add(new ComboManager.AbilityInformation("AirScooter", ClickType.LEFT_CLICK));
-        //airwake.add(new ComboManager.AbilityInformation("AirSwipe", ClickType.SHIFT_DOWN));
+        airwake.add(new ComboManager.AbilityInformation("AirBreath", ClickType.SHIFT_DOWN));
         return airwake;
     }
 }
